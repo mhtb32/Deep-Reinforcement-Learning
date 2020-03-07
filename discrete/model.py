@@ -14,12 +14,14 @@ class Net(nn.Module):
     """
     def __init__(self, n_states, n_actions):
         super().__init__()
-        self.hidden_layer = nn.Linear(n_states, 64)
-        self.output_layer = nn.Linear(64, n_actions)
+        self.hl1 = nn.Linear(n_states, 24)
+        self.hl2 = nn.Linear(24, 48)
+        self.ol = nn.Linear(48, n_actions)
 
     def forward(self, x):
-        x = torch.sigmoid(self.hidden_layer(x))
-        x = torch.sigmoid(self.output_layer(x))
+        x = torch.relu(self.hl1(x))
+        x = torch.relu(self.hl2(x))
+        x = self.ol(x)
         return x
 
 

@@ -40,7 +40,7 @@ class ReplayMemory:
 
 
 class Agent:
-    def __init__(self, n_states, n_actions, lr=1e-3, gamma=0.9, memory_size=10000, batch_size=200,  device='cpu'):
+    def __init__(self, n_states, n_actions, lr=1e-3, gamma=0.99, memory_size=20000, batch_size=32,  device='cpu'):
         self.n_states = n_states
         self.n_actions = n_actions
         self.device = device
@@ -49,16 +49,17 @@ class Agent:
         self.target_net.load_state_dict(self.policy_net.state_dict())  # equalize parameters
         self.target_net.eval()  # switch training mode off
         self.memory = ReplayMemory(memory_size)
-        self.optimizer = optim.SGD(self.policy_net.parameters(), lr=lr)
+        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=lr)
+        self.step_count = 0  # to count steps of training
 
         # Hyper Parameters
-        self.step_count = 0  # to count steps of training
-        self.eps_initial = 0.9  # mainly explore at first
-        self.eps_final = 0.05  # leave a bit of exploration
+        self.eps_initial = 1  # mainly explore at first
+        self.eps_final = 0.01  # leave a bit of exploration
         self.eps_decay = 200  # decay epsilon every 200 steps
+        self.eps = self.eps_initial
         self.batch_size = batch_size
         self.gamma = gamma
-        self.target_update = 5  # in number of episodes
+        self.target_update = 1  # in number of episodes
 
         self.criterion = nn.MSELoss()
 
@@ -71,10 +72,10 @@ class Agent:
         """
         sample = random.random()
         # Decay epsilon every "eps_decay" steps to make policy GLIE (see David Silver's course)
-        eps_threshold = self.eps_final + (self.eps_initial - self.eps_final) * math.exp(-1. * self.step_count /
-                                                                                        self.eps_decay)
+        self.eps = self.eps_final + (self.eps_initial - self.eps_final) * math.exp(-1. * self.step_count /
+                                                                                   self.eps_decay)
         self.step_count += 1
-        if sample > eps_threshold:
+        if sample > self.eps:
             with torch.no_grad():  # argmax() should not affect gradient
                 return self.policy_net(state).argmax().view(1, 1)
         else:
