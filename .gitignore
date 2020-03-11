@@ -107,3 +107,4 @@ dmypy.json
 .pyre/
 
 # My ignored stuff
+*.pt
