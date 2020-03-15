@@ -2,16 +2,19 @@
 Describes agent
 """
 
-import random
 import math
+import random
+
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
-from collections import deque
-import itertools
+
 from .model import Net
-from algorithms.utils import Transition, ReplayMemory
+from ..utils import Transition, ReplayMemory
 
 
 class Agent:
@@ -30,7 +33,7 @@ class Agent:
         # Hyper Parameters
         self.eps_initial = 1  # mainly explore at first
         self.eps_final = 0.01  # leave a bit of exploration
-        self.eps_decay = 200  # decay epsilon every 200 steps
+        self.eps_decay = 20  # decay epsilon every 200 steps
         self.eps = self.eps_initial
         self.batch_size = batch_size
         self.gamma = gamma
@@ -85,51 +88,44 @@ class Agent:
         self.optimizer.step()
 
 
-def moving_average(iterable, n=3):
-    # moving_average([40, 30, 50, 46, 39, 44]) --> 40.0 42.0 45.0 43.0
-    # http://en.wikipedia.org/wiki/Moving_average
-    it = iter(iterable)
-    d = deque(itertools.islice(it, n-1))
-    d.appendleft(0)
-    s = sum(d)
-    for elem in it:
-        s += elem - d.popleft()
-        d.append(elem)
-        yield s / n
-
-
-def reward_shape(state, mode='velocity'):
-    if mode == 'position':
-        if state[0] > -0.2:
-            return 1.0
+def reward_shape(state, mode='position'):
+    if mode == 'position':  # encourage going above a certain height
+        checkpoint = -0.5
+        if state[0] > checkpoint:
+            return abs(state[0] - checkpoint)
         else:
             return 0.0
-    elif mode == 'velocity':
+    elif mode == 'velocity':  # encourage going faster
         return 100/7 * np.fabs(state[1])
+    elif mode == 'extra':  # give extra reward for reaching goal
+        if state[0] >= 0.5:
+            return 10.0
+        else:
+            return 0.0
 
 
 def train(n_episodes, agent, env):
-    returns_buffer = []
-    for i_episode in range(n_episodes):
+    returns_buffer = np.zeros(n_episodes)
+    for i in range(n_episodes):
         state = torch.from_numpy(env.reset().astype('float32')).to(agent.device)
-        e_return = 0
-        mod_e_return = 0
+        return_ = 0
+        mod_return = 0
         for t in range(200):  # 200 is maximum length of an episode
             env.render()
 
             action = agent.select_action(state)
             next_state, reward, done, _ = env.step(action.item())
 
-            e_return += reward
+            return_ += reward
             reward += reward_shape(next_state, mode='position')
-            mod_e_return += reward
+            mod_return += reward
 
             reward = torch.tensor([reward], device=agent.device)
             next_state = torch.from_numpy(next_state.astype('float32')).to(agent.device)
 
             if done:
-                print(f"Episode {i_episode + 1} with return {e_return} and modified return {mod_e_return}.")
-                returns_buffer.append(e_return)
+                print(f"Episode {i + 1} finished. return: {return_}, modified return: {mod_return}.")
+                returns_buffer[i] = return_
                 break
 
             agent.memory.push(state, action, reward, next_state)
@@ -138,22 +134,23 @@ def train(n_episodes, agent, env):
 
             agent.optimize_model()
 
-        if i_episode % agent.target_update == 0:
+        if i % agent.target_update == 0:
             agent.target_net.load_state_dict(agent.policy_net.state_dict())
 
     print("Training Complete")
     env.close()
-    torch.save(agent.target_net.state_dict(), 'param.pt')
+    torch.save(agent.policy_net.state_dict(), f'algorithms/dqn/params{n_episodes}eps.pt')
     # return average returns of previous 100 episodes
-    return [ave for ave in moving_average(returns_buffer, 100)]
+    return returns_buffer, np.convolve(returns_buffer, np.ones((100,))/100, mode='valid')  # Moving Average
 
 
-def test(n_episodes, env, dev=torch.device('cpu')):
-    model = Net(2, 3)
+def test(n_episodes, n_eps_model, env, dev=torch.device('cpu')):
+    model = Net(2, 3).to(dev)
     try:
-        model.load_state_dict(torch.load('param.pt'))
+        model.load_state_dict(torch.load(f'algorithms/dqn/params{n_eps_model}eps.pt'))
     except FileNotFoundError:
         print("Model is not trained yet")
+    model.eval()
     for i in range(n_episodes):
         state = torch.from_numpy(env.reset().astype('float32')).to(dev)
         e_return = 0
@@ -165,3 +162,25 @@ def test(n_episodes, env, dev=torch.device('cpu')):
             if done:
                 print(f"Episode {i + 1} reward is {e_return}")
                 break
+
+
+def eval_model(n_episodes: int):
+    model = Net(2, 3)
+
+    try:
+        model.load_state_dict(torch.load(f'algorithms/dqn/params{n_episodes}eps.pt'))
+    except FileNotFoundError:
+        print("Model is not trained yet")
+    model.eval()
+
+    pos = np.linspace(-1.2, 0.6, dtype=np.float32).reshape(-1, 1)
+    vel = np.linspace(-0.07, 0.07, dtype=np.float32).reshape(-1, 1)
+    pos, vel = np.meshgrid(pos, vel)
+    ss = np.dstack((pos, vel))
+    q_values = model(torch.from_numpy(ss)).detach().numpy()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1, projection='3d')
+    ax.plot_surface(pos, vel, np.argmax(q_values, axis=2), cmap=cm.coolwarm)
+
+    plt.show()

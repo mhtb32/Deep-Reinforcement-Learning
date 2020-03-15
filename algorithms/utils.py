@@ -2,9 +2,8 @@
 Replay memory for storing experience samples
 """
 
-import random
 from collections import namedtuple
-
+import random
 
 Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
 
