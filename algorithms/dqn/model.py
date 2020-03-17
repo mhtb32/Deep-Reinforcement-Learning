@@ -8,7 +8,7 @@ import torch.nn as nn
 
 class Net(nn.Module):
     """
-    A MLP with one hidden layer
+    A MLP with two hidden layer
     inputs = array of states
     outputs = estimated q value for each action
     """
