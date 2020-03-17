@@ -14,9 +14,9 @@ class Net(nn.Module):
     """
     def __init__(self, n_states, n_actions):
         super().__init__()
-        self.hl1 = nn.Linear(n_states, 24)
-        self.hl2 = nn.Linear(24, 48)
-        self.ol = nn.Linear(48, n_actions)
+        self.hl1 = nn.Linear(n_states, 32)
+        self.hl2 = nn.Linear(32, 64)
+        self.ol = nn.Linear(64, n_actions)
 
     def forward(self, x):
         x = torch.relu(self.hl1(x))

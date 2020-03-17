@@ -13,7 +13,7 @@ from algorithms.dqn.agent import Agent
 from algorithms.dqn.agent import train, test, eval_model
 
 
-N_EPISODES = 300
+N_EPISODES = 400
 
 
 parser = argparse.ArgumentParser()
@@ -24,6 +24,7 @@ args = parser.parse_args()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 environment = gym.make('MountainCar-v0')
+# environment = environment.unwrapped
 
 if args.test:
     test(20, N_EPISODES, environment, device)

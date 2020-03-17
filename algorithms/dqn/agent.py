@@ -2,9 +2,6 @@
 Describes agent
 """
 
-import math
-import random
-
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
@@ -33,7 +30,7 @@ class Agent:
         # Hyper Parameters
         self.eps_initial = 1  # mainly explore at first
         self.eps_final = 0.01  # leave a bit of exploration
-        self.eps_decay = 20  # decay epsilon every 200 steps
+        self.exploration_samples = 4000
         self.eps = self.eps_initial
         self.batch_size = batch_size
         self.gamma = gamma
@@ -48,10 +45,10 @@ class Agent:
         :param state: current state
         :return: selected action from {0, 1, 2}
         """
-        sample = random.random()
+        sample = np.random.rand()
         # Decay epsilon every "eps_decay" steps to make policy GLIE (see David Silver's course)
-        self.eps = self.eps_final + (self.eps_initial - self.eps_final) * math.exp(-1. * self.step_count /
-                                                                                   self.eps_decay)
+        fraction = min(float(self.step_count) / self.exploration_samples, 1.0)
+        self.eps = self.eps_initial + fraction * (self.eps_final - self.eps_initial)
         self.step_count += 1
         if sample > self.eps:
             with torch.no_grad():  # argmax() should not affect gradient
@@ -90,9 +87,9 @@ class Agent:
 
 def reward_shape(state, mode='position'):
     if mode == 'position':  # encourage going above a certain height
-        checkpoint = -0.5
+        checkpoint = -0.3
         if state[0] > checkpoint:
-            return abs(state[0] - checkpoint)
+            return 1.0
         else:
             return 0.0
     elif mode == 'velocity':  # encourage going faster
@@ -110,7 +107,7 @@ def train(n_episodes, agent, env):
         state = torch.from_numpy(env.reset().astype('float32')).to(agent.device)
         return_ = 0
         mod_return = 0
-        for t in range(200):  # 200 is maximum length of an episode
+        for t in range(200):  # 200 is max time-step
             env.render()
 
             action = agent.select_action(state)
@@ -124,7 +121,8 @@ def train(n_episodes, agent, env):
             next_state = torch.from_numpy(next_state.astype('float32')).to(agent.device)
 
             if done:
-                print(f"Episode {i + 1} finished. return: {return_}, modified return: {mod_return}.")
+                print(f"Episode {i + 1} finished. return: {return_}, mod_return: {mod_return: .2f},"
+                      f" epsilon: {agent.eps: .2f}")
                 returns_buffer[i] = return_
                 break
 
@@ -145,12 +143,13 @@ def train(n_episodes, agent, env):
 
 
 def test(n_episodes, n_eps_model, env, dev=torch.device('cpu')):
-    model = Net(2, 3).to(dev)
+    model = Net(2, 3)
     try:
         model.load_state_dict(torch.load(f'algorithms/dqn/params{n_eps_model}eps.pt'))
     except FileNotFoundError:
         print("Model is not trained yet")
     model.eval()
+
     for i in range(n_episodes):
         state = torch.from_numpy(env.reset().astype('float32')).to(dev)
         e_return = 0
@@ -180,7 +179,9 @@ def eval_model(n_episodes: int):
     q_values = model(torch.from_numpy(ss)).detach().numpy()
 
     fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1, projection='3d')
-    ax.plot_surface(pos, vel, np.argmax(q_values, axis=2), cmap=cm.coolwarm)
+    ax1 = fig.add_subplot(2, 1, 1, projection='3d')
+    ax2 = fig.add_subplot(2, 1, 2, projection='3d')
+    ax1.plot_surface(pos, vel, -np.max(q_values, axis=2), cmap=cm.coolwarm)
+    ax2.plot_surface(pos, vel, np.argmax(q_values, axis=2), cmap=cm.coolwarm)
 
     plt.show()
