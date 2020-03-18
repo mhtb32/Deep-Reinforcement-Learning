@@ -32,36 +32,37 @@ def reward_shape(state, mode='position'):
             return 0.0
 
 
-def train(n_episodes, agent, env):
+def train(n_episodes, agent, env, max_ep_len=200):
     returns_buffer = np.zeros(n_episodes)
     for i in range(n_episodes):
-        state = torch.from_numpy(env.reset().astype('float32')).to(agent.device)
-        return_ = 0
-        mod_return = 0
-        for t in range(200):  # 200 is max time-step
+        observation = torch.as_tensor(env.reset().astype('float32'), device=agent.device)
+        return_, mod_return = 0., 0.
+        for t in range(max_ep_len):  # 200 is max time-step
             env.render()
 
-            action = agent.select_action(state)
-            next_state, reward, done, _ = env.step(action.item())
-
+            action = agent.select_action(observation)
+            next_observation, reward, done, _ = env.step(action.item())
+            # Ignore the "done" signal if it comes from hitting the time horizon (that is, when it's an artificial
+            # terminal signal that isn't based on the agent's state)
+            done = False if t+1 == max_ep_len else done
             return_ += reward
-            reward += reward_shape(next_state, mode='position')
+            reward += reward_shape(next_observation, mode='position')
             mod_return += reward
 
             reward = torch.tensor([reward], device=agent.device)
-            next_state = torch.from_numpy(next_state.astype('float32')).to(agent.device)
+            next_observation = torch.as_tensor(next_observation.astype('float32'), device=agent.device)
 
-            if done:
+            agent.memory.store(observation, action, reward, next_observation, done)
+
+            observation = next_observation
+
+            agent.optimize_model()
+
+            if done or t+1 == max_ep_len:
                 print(f"Episode {i + 1} finished. return: {return_}, mod_return: {mod_return: .2f},"
                       f" epsilon: {agent.eps: .2f}")
                 returns_buffer[i] = return_
                 break
-
-            agent.memory.push(state, action, reward, next_state)
-
-            state = next_state
-
-            agent.optimize_model()
 
         if i % agent.target_update == 0:
             agent.target_net.load_state_dict(agent.policy_net.state_dict())

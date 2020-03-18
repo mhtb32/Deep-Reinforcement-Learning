@@ -2,37 +2,49 @@
 Replay memory for storing experience samples
 """
 
-from collections import namedtuple
-import random
-
 import numpy as np
+import torch
 
-Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
+
+def combined_shape(length, shape=None):
+    if shape is None:
+        return length,
+    return (length, shape) if np.isscalar(shape) else (length, *shape)
 
 
 class ReplayMemory:
     """
-    Stores past experiences of agent as (s,a,r,s') tuples
+    A simple FIFO experience replay buffer.
     """
-    def __init__(self, capacity):
-        self.capacity = capacity
-        self.memory = []
-        self.position = 0
+
+    def __init__(self, obs_dim, act_dim, size):
+        self.obs = np.zeros(combined_shape(size, obs_dim), dtype=np.float32)
+        self.nxt_obs = np.zeros(combined_shape(size, obs_dim), dtype=np.float32)
+        self.act = np.zeros(combined_shape(size, act_dim), dtype=np.float32)
+        self.rew = np.zeros(size, dtype=np.float32)
+        self.done = np.zeros(size, dtype=np.float32)
+        self.ptr, self.size, self.max_size = 0, 0, size
 
     def __len__(self):
-        return len(self.memory)
+        return self.size
 
-    def push(self, *args):
-        """
-        Saves a transition.
-        """
-        if len(self.memory) < self.capacity:
-            self.memory.append(None)
-        self.memory[self.position] = Transition(*args)
-        self.position = (self.position + 1) % self.capacity
+    def store(self, obs, act, rew, next_obs, done):
+        self.obs[self.ptr] = obs
+        self.nxt_obs[self.ptr] = next_obs
+        self.act[self.ptr] = act
+        self.rew[self.ptr] = rew
+        self.done[self.ptr] = done
+        self.ptr = (self.ptr+1) % self.max_size
+        self.size = min(self.size+1, self.max_size)
 
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
+    def sample_batch(self, batch_size=32):
+        idxs = np.random.randint(0, self.size, size=batch_size)
+        batch = dict(obs=self.obs[idxs],
+                     nxt_obs=self.nxt_obs[idxs],
+                     act=self.act[idxs],
+                     rew=self.rew[idxs],
+                     done=self.done[idxs])
+        return {k: torch.as_tensor(v, dtype=torch.float32) for k, v in batch.items()}
 
 
 class OrnsteinUhlenbeckProcess:
