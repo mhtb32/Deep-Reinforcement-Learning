@@ -35,23 +35,20 @@ def reward_shape(state, mode='position'):
 def train(n_episodes, agent, env, max_ep_len=200):
     returns_buffer = np.zeros(n_episodes)
     for i in range(n_episodes):
-        observation = torch.as_tensor(env.reset().astype('float32'), device=agent.device)
+        observation = env.reset()
         return_, mod_return = 0., 0.
-        for t in range(max_ep_len):  # 200 is max time-step
+        for t in range(max_ep_len):
             env.render()
 
-            action = agent.select_action(observation)
+            action = agent.pick_action(torch.as_tensor(observation.astype('float32'), device=agent.device))
             next_observation, reward, done, _ = env.step(action.item())
+
             # Ignore the "done" signal if it comes from hitting the time horizon (that is, when it's an artificial
             # terminal signal that isn't based on the agent's state)
             done = False if t+1 == max_ep_len else done
             return_ += reward
             reward += reward_shape(next_observation, mode='position')
             mod_return += reward
-
-            reward = torch.tensor([reward], device=agent.device)
-            next_observation = torch.as_tensor(next_observation.astype('float32'), device=agent.device)
-
             agent.memory.store(observation, action, reward, next_observation, done)
 
             observation = next_observation

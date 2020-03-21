@@ -2,14 +2,10 @@
 Replay memory for storing experience samples
 """
 
+from collections import namedtuple
+
 import numpy as np
 import torch
-
-
-def combined_shape(length, shape=None):
-    if shape is None:
-        return length,
-    return (length, shape) if np.isscalar(shape) else (length, *shape)
 
 
 class ReplayMemory:
@@ -88,12 +84,23 @@ class OrnsteinUhlenbeckProcess:
         self.xt = self.x0 if self.x0 is not None else np.zeros(self.size)
 
 
+# tuple for learning configuration
+DDPGConfig = namedtuple('DDPGConfig', ('n_states', 'n_actions', 'pi_lr', 'q_lr', 'gamma', 'tau', 'memory_size',
+                                       'batch_size'))
+
+
+def combined_shape(length, shape=None):
+    if shape is None:
+        return length,
+    return (length, shape) if np.isscalar(shape) else (length, *shape)
+
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     DURATION = 10000
 
-    rv = OrnsteinUhlenbeckProcess(mu=3.5)
+    rv = OrnsteinUhlenbeckProcess(mu=3.5, sigma_f=.1)
     x = np.zeros(DURATION)
 
     for t in range(DURATION):

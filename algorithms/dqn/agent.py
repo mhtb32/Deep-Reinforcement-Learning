@@ -36,7 +36,7 @@ class Agent:
 
         self.criterion = nn.MSELoss()
 
-    def select_action(self, state):
+    def pick_action(self, state):
         """
         following an e-greedy policy
 
@@ -58,6 +58,7 @@ class Agent:
     def optimize_model(self):
         if len(self.memory) < self.batch_size:
             return
+
         batch = self.memory.sample_batch(self.batch_size)
 
         state_action_values = self.policy_net(batch['obs']).gather(1, batch['act'].long())  # Q(s_t, a), see
@@ -68,7 +69,7 @@ class Agent:
             # TD-target:
             target_state_action_values = batch['rew'] + self.gamma * (1 - batch['done']) * next_state_values
 
-        loss = self.criterion(state_action_values, target_state_action_values.unsqueeze(1))
         self.optimizer.zero_grad()
+        loss = self.criterion(state_action_values, target_state_action_values.unsqueeze(1))
         loss.backward()
         self.optimizer.step()
