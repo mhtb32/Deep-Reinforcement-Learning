@@ -114,7 +114,6 @@ def eval_model(n_episodes: int):
     ax2.set_title("policy")
     ax1.plot_surface(pos, vel, -np.max(q_values, axis=2), cmap=cm.coolwarm)
     ax2.plot_surface(pos, vel, np.argmax(q_values, axis=2), cmap=cm.coolwarm)
-
     plt.show()
 
 

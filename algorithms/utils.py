@@ -49,7 +49,7 @@ class OrnsteinUhlenbeckProcess:
         https://math.stackexchange.com/questions/1287634/implementing-ornstein-uhlenbeck-in-matlab
         https://github.com/ghliu/pytorch-ddpg/blob/master/random_process.py#L32
     """
-    def __init__(self, theta=1., mu=0., sigma_i=1., sigma_f=None, dt=1e-2, x0=None, size=1, n_steps_annealing=1000):
+    def __init__(self, theta=.15, mu=0., sigma_i=.2, sigma_f=None, dt=1e-2, x0=None, size=1, n_steps_annealing=10000):
         self.theta = theta
         self.mu = mu
         self.sigma_i = sigma_i
@@ -86,7 +86,7 @@ class OrnsteinUhlenbeckProcess:
 
 # tuple for learning configuration
 DDPGConfig = namedtuple('DDPGConfig', ('n_states', 'n_actions', 'pi_lr', 'q_lr', 'gamma', 'tau', 'memory_size',
-                                       'batch_size'))
+                                       'batch_size', 'sigma_f', 'n_steps_annealing'))
 
 
 def combined_shape(length, shape=None):
@@ -100,7 +100,7 @@ if __name__ == "__main__":
 
     DURATION = 10000
 
-    rv = OrnsteinUhlenbeckProcess(mu=3.5, sigma_f=.1)
+    rv = OrnsteinUhlenbeckProcess(mu=3.5, theta=.2, sigma_i=1., sigma_f=.01, n_steps_annealing=2000)
     x = np.zeros(DURATION)
 
     for t in range(DURATION):

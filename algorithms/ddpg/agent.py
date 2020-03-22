@@ -30,7 +30,8 @@ class Agent:
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=config.pi_lr)
 
         self.replay_memory = ReplayMemory(self.n_states, self.n_actions, config.memory_size)
-        self.exploration_noise = OrnsteinUhlenbeckProcess(sigma_f=.01, n_steps_annealing=30000)
+        self.exploration_noise = OrnsteinUhlenbeckProcess(sigma_i=1., sigma_f=config.sigma_f,
+                                                          n_steps_annealing=config.n_steps_annealing)
 
         self.gamma = config.gamma
         self.tau = config.tau
