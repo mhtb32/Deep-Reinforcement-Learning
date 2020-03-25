@@ -10,9 +10,9 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import torch
 
-from algorithms.ddpg.agent import Agent
-from algorithms.ddpg.model import ActorNet
-from algorithms.utils import DDPGConfig
+from deeprl.ddpg.agent import Agent
+from deeprl.ddpg.model import ActorNet
+from deeprl.utils import DDPGConfig
 
 
 def train(n_eps, agent, env, max_ep_len=999):
@@ -47,7 +47,7 @@ def train(n_eps, agent, env, max_ep_len=999):
     print("Training Complete")
     env.close()
     # return average returns of previous 50 episodes
-    torch.save(agent.actor.state_dict(), f'algorithms/ddpg/params{n_eps}eps.pt')
+    torch.save(agent.actor.state_dict(), f'deeprl/ddpg/params{n_eps}eps.pt')
     return returns_buffer, np.convolve(returns_buffer, np.ones((50,))/50, mode='valid')  # Moving Average
 
 
@@ -55,7 +55,7 @@ def test(n_eps, n_eps_model, env, max_ep_len=999):
     model = ActorNet(2, 1)
 
     try:
-        model.load_state_dict(torch.load(f'algorithms/ddpg/params{n_eps_model}eps.pt'))
+        model.load_state_dict(torch.load(f'deeprl/ddpg/params{n_eps_model}eps.pt'))
     except FileNotFoundError:
         print("This model is not trained yet")
 
@@ -81,7 +81,7 @@ def eval_model(n_eps_model):
     model = ActorNet(2, 1)
 
     try:
-        model.load_state_dict(torch.load(f'algorithms/ddpg/params{n_eps_model}eps.pt'))
+        model.load_state_dict(torch.load(f'deeprl/ddpg/params{n_eps_model}eps.pt'))
     except FileNotFoundError:
         print("This model is not trained yet")
 

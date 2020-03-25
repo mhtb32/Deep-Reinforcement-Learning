@@ -10,8 +10,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import torch
 
-from algorithms.dqn.agent import Agent
-from algorithms.dqn.model import Net
+from deeprl.dqn.agent import Agent
+from deeprl.dqn.model import Net
 
 N_EPISODES = 400
 
@@ -66,7 +66,7 @@ def train(n_episodes, agent, env, max_ep_len=200):
 
     print("Training Complete")
     env.close()
-    torch.save(agent.policy_net.state_dict(), f'algorithms/dqn/params{n_episodes}eps.pt')
+    torch.save(agent.policy_net.state_dict(), f'deeprl/dqn/params{n_episodes}eps.pt')
     # return average returns of previous 100 episodes
     return returns_buffer, np.convolve(returns_buffer, np.ones((100,))/100, mode='valid')  # Moving Average
 
@@ -74,7 +74,7 @@ def train(n_episodes, agent, env, max_ep_len=200):
 def test(n_episodes, n_eps_model, env):
     model = Net(2, 3)
     try:
-        model.load_state_dict(torch.load(f'algorithms/dqn/params{n_eps_model}eps.pt'))
+        model.load_state_dict(torch.load(f'deeprl/dqn/params{n_eps_model}eps.pt'))
     except FileNotFoundError:
         print("Model is not trained yet")
     model.eval()
@@ -97,7 +97,7 @@ def eval_model(n_episodes: int):
     model = Net(2, 3)
 
     try:
-        model.load_state_dict(torch.load(f'algorithms/dqn/params{n_episodes}eps.pt'))
+        model.load_state_dict(torch.load(f'deeprl/dqn/params{n_episodes}eps.pt'))
     except FileNotFoundError:
         print("Model is not trained yet")
     model.eval()
