@@ -90,6 +90,7 @@ def test(n_episodes, n_eps_model, env):
             if done:
                 print(f"Episode {i + 1} reward is {e_return}")
                 break
+    env.close()
 
 
 def eval_model(n_episodes: int):
