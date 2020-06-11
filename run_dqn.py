@@ -87,6 +87,7 @@ def test(n_episodes, n_eps_model, env):
             action = model(state).argmax().view(1, 1)
             next_state, reward, done, _ = env.step(action.item())
             e_return += reward
+            state = torch.from_numpy(next_state.astype('float32').flatten())
             if done:
                 print(f"Episode {i + 1} reward is {e_return}")
                 break

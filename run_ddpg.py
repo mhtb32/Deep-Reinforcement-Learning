@@ -70,6 +70,7 @@ def test(n_eps, n_eps_model, env, max_ep_len=999):
             act = model(obs).detach().numpy()
             nxt_obs, rew, done, _ = env.step(act)
             return_ += rew
+            obs = torch.from_numpy(nxt_obs.astype('float32').flatten())
 
             if done or t + 1 == max_ep_len:
                 print(f"Episode {i + 1} finished in {t + 1} steps with return: {return_: .2f}")
